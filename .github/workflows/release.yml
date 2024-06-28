@@ -27,23 +27,12 @@ jobs:
       - name: Update version
         id: update_version
         run: |
-          NEW_VERSION=$(npm version minor -m "chore: release %s")
-          echo "new_version=${NEW_VERSION}" >> $GITHUB_ENV
+          NEW_VERSION=$(npm --no-git-tag-version version minor)
           sed -i "s/NEXT_PUBLIC_APP_VERSION=.*/NEXT_PUBLIC_APP_VERSION=$NEW_VERSION/" .env
-          git add .env
-          git commit -m "chore: update NEXT_PUBLIC_APP_VERSION to $NEW_VERSION"
+          git add .
+          git commit -m "Bump version to $NEW_VERSION"
+          git tag -a $NEW_VERSION -m "Bump version to $NEW_VERSION"
           git push origin main --tags
-  sync-with-dev:
-    needs: update-version-and-tag
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Configure Git
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
       - name: Fetch all branches
         run: git fetch --all
       - name: Merge main into dev
@@ -51,3 +40,21 @@ jobs:
           git checkout dev
           git merge main --no-ff --commit -m "Merge branch 'main' into dev"
           git push origin dev
+  # sync-with-dev:
+  #   needs: update-version-and-tag
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         fetch-depth: 0
+  #     - name: Configure Git
+  #       run: |
+  #         git config user.name "github-actions[bot]"
+  #         git config user.email "github-actions[bot]@users.noreply.github.com"
+  #     - name: Fetch all branches
+  #       run: git fetch --all
+  #     - name: Merge main into dev
+  #       run: |
+  #         git checkout dev
+  #         git merge main --no-ff --commit -m "Merge branch 'main' into dev"
+  #         git push origin dev
