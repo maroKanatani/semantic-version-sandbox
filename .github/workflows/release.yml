@@ -1,29 +1,49 @@
-name: Create PR for Release
+name: Release
 on:
   workflow_dispatch:
-  push:
+  pull_request:
+    types: [closed]
     branches:
-      - dev
-
-permissions:
-  contents: read
-  pull-requests: write
+      - main
 
 jobs:
-  create-pr:
+  update-version-and-tag:
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
-      - uses: ruby/setup-ruby@v1
         with:
-          ruby-version: 3.1
-      - run: gem install --no-document git-pr-release
-      - run: git-pr-release --overwrite-description
-        env:
-          GIT_PR_RELEASE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GIT_PR_RELEASE_BRANCH_PRODUCTION: main
-          GIT_PR_RELEASE_BRANCH_STAGING: dev
-          GIT_PR_RELEASE_LABELS: release
-          GIT_PR_RELEASE_TEMPLATE: .github/git-pr-release.erb
-          TZ: Asia/Tokyo
+          fetch-depth: 0
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        run: npm ci
+      - name: Update version
+        id: update_version
+        run: |
+          NEW_VERSION=$(npm version minor -m "chore: release %s")
+          echo "new_version=${NEW_VERSION}" >> $GITHUB_ENV
+          sed -i "s/NEXT_PUBLIC_APP_VERSION=.*/NEXT_PUBLIC_APP_VERSION=$NEW_VERSION/" .env
+          git add .env
+          git commit -m "chore: update NEXT_PUBLIC_APP_VERSION to $NEW_VERSION"
+          git push origin main --tags
+  sync-with-dev:
+    needs: update-version-and-tag
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+      - name: Fetch all branches
+        run: git fetch --all
+      - name: Merge main into dev
+        run: |
+          git checkout dev
+          git merge main --no-ff --commit -m "Merge branch 'main' into dev"
+          git push origin dev
