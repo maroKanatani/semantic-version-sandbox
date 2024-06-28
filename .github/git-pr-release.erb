@@ -1,0 +1,20 @@
+Release Production <%= Time.now.strftime('%Y-%m-%d %H:%M') %>
+<% label_names = { 'enhancement' => '🚀 Features', 'bug' => '🐛 Bug Fixes', 'other' => '🛠 Maintenance' } -%>
+<% label_names.each do |label_name, label_display_name| -%>
+  <% filtered_prs = pull_requests.select do |pr|
+    if label_name == 'other'
+      pr.labels.none? { |label| ['bug', 'enhancement'].include?(label.name) }
+    else
+      pr.labels.any? { |label| label.name == label_name }
+    end
+  end -%>
+  <% next if filtered_prs.empty? -%>
+
+### <%= label_display_name %>
+  <% filtered_prs.each do |pr| -%>
+- #<%=  pr.number %> <%= pr.mention %>
+  <% end -%>
+<% end -%>
+
+### 👀 Checklist
+- [ ] aaaaaaaaaaaaaaaaa
