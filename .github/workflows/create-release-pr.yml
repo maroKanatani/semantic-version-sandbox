@@ -18,6 +18,11 @@ jobs:
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: 3.1
+      - name: Get Release Version
+        run: |
+          NEW_VERSION=$(npm --no-git-tag-version version minor)
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+
       - run: gem install --no-document git-pr-release
       - run: git-pr-release --overwrite-description
         env:
